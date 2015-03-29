@@ -1,0 +1,74 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url 'https://dl.bintray.com/fwelland/FredsStuff'
+        }
+    }
+    dependencies {
+        classpath 'de.undercouch:gradle-download-task:1.2'
+        classpath 'org.fhw:gradle-wildfly-plugin:0.2'
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://dl.bintray.com/fwelland/FredsStuff'
+    }
+}
+
+dependencies {
+    compile 'org.fhw:gradle-wildfly-plugin:0.2'
+}
+
+apply plugin: org.fhw.gradle.wildfly.WildFlyPlugin
+apply plugin: de.undercouch.gradle.tasks.download.DownloadTaskPlugin
+
+task downloadFile(type: de.undercouch.gradle.tasks.download.Download) {
+    src 'http://download.jboss.org/wildfly/8.2.0.Final/wildfly-8.2.0.Final.zip'
+    dest buildDir
+
+    outputs.upToDateWhen {
+        def file = new File(buildDir.absolutePath + '/wildfly-8.2.0.Final.zip')
+
+        if (file.exists()) {
+            return true
+        }
+
+        return false
+    }
+}
+
+def applicationName = 'wildfly-integration-test.ear'
+
+wildfly {
+    wildfly_home = file('build/wildfly-8.2.0.Final/').absolutePath
+    deployment_name = applicationName
+    path_to_deployable = file('build/libs/' + applicationName).absolutePath
+}
+
+task unzipWildfly(type: Copy) {
+    from(zipTree(buildDir.absolutePath + '/wildfly-8.2.0.Final.zip'))
+    into 'build'
+
+    outputs.upToDateWhen {
+        def file = new File(buildDir.absolutePath + '/wildfly-8.2.0.Final')
+
+        if (file.exists()) {
+            return true
+        }
+
+        return false
+    }
+}
+
+task copyConfigFiles(type: Copy) {
+    from('src/wildfly')
+    into 'build/wildfly-8.2.0.Final'
+}
+
+unzipWildfly.dependsOn downloadFile
+unzipWildfly.finalizedBy copyConfigFiles
+start.dependsOn unzipWildfly
+deploy.dependsOn start

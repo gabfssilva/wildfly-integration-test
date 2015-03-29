@@ -1,0 +1,4 @@
+rootProject.name = 'wildfly-integration-test'
+
+include 'web', 'ear'
+

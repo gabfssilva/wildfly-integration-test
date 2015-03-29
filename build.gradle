@@ -1,0 +1,67 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+sourceCompatibility = 1.8
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven'
+
+    repositories {
+        mavenCentral()
+    }
+
+    sourceSets {
+        integrationTest {
+            java.srcDir file('src/integration-tests/java')
+            resources.srcDir file('src/integration-tests/resources')
+        }
+    }
+
+    dependencies {
+        integrationTestCompile sourceSets.main.output
+        integrationTestCompile configurations.testCompile
+        integrationTestCompile sourceSets.test.output
+        integrationTestRuntime configurations.testRuntime
+    }
+
+    task integrationTest(type: Test) {
+        testClassesDir = sourceSets.integrationTest.output.classesDir
+        classpath = sourceSets.integrationTest.runtimeClasspath
+
+        outputs.upToDateWhen { false }
+    }
+}
+
+project(':ear') {
+    apply plugin: 'ear'
+    apply from: '../integration.gradle'
+
+    ear.archiveName = 'wildfly-integration-test.ear'
+
+    deploy.dependsOn ear
+    integrationTest.dependsOn deploy
+    integrationTest.finalizedBy stop
+
+    dependencies {
+       deploy project(path: ':web', configuration: 'archives')
+
+        testCompile 'com.jayway.restassured:rest-assured:2.4.0'
+        testCompile group: 'junit', name: 'junit', version: '4.11'
+    }
+}
+
+project(':web') {
+    apply plugin: 'war'
+
+    dependencies {
+        providedCompile 'javax:javaee-api:7.0'
+
+        testCompile group: 'junit', name: 'junit', version: '4.11'
+    }
+}
